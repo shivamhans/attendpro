@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance Tracker</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- AUTHENTICATION VIEW -->
+  <div id="auth-view" class="view-section active">
+    <div class="auth-container glass-card">
+      <div class="auth-logo">
+        <i class="ph ph-check-circle pd-icon"></i>
+        <h1>AttendPro</h1>
+      </div>
+      <p class="auth-subtitle">Welcome back. Please login to continue.</p>
+      
+      <form id="auth-form">
+        <div class="input-group">
+          <i class="ph ph-envelope"></i>
+          <input type="email" id="auth-email" placeholder="Email Address" required>
+        </div>
+        <div class="input-group">
+          <i class="ph ph-lock-key"></i>
+          <input type="password" id="auth-password" placeholder="Password" required>
+        </div>
+        
+        <div id="auth-error" class="error-msg hidden"></div>
+        
+        <button type="submit" id="login-btn" class="btn primary-btn">Login</button>
+        <button type="button" id="signup-btn" class="btn secondary-btn">Create Account</button>
+        <button type="button" id="forgot-password-btn" class="btn secondary-btn" style="border: none; margin-top: -5px; font-size: 0.9rem;">Forgot Password?</button>
+        
+        <div class="watermark">Made by Shivam Hans</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PASSWORD RECOVERY VIEWS -->
+  <div id="reset-password-view" class="view-section hidden">
+    <div class="auth-container glass-card">
+      <div class="auth-logo">
+        <i class="ph ph-key"></i>
+        <h1>Reset Password</h1>
+      </div>
+      <p class="auth-subtitle">Enter your email to receive a recovery link.</p>
+      
+      <div class="input-group">
+        <i class="ph ph-envelope"></i>
+        <input type="email" id="reset-email" placeholder="Email Address" required>
+      </div>
+      
+      <div id="reset-error" class="error-msg hidden"></div>
+      
+      <button type="button" id="send-reset-btn" class="btn primary-btn">Send Link</button>
+      <button type="button" id="back-to-login-btn" class="btn secondary-btn">Back to Login</button>
+    </div>
+  </div>
+
+  <div id="update-password-view" class="view-section hidden">
+    <div class="auth-container glass-card">
+      <div class="auth-logo">
+        <i class="ph ph-lock-key"></i>
+        <h1>New Password</h1>
+      </div>
+      <p class="auth-subtitle">Please enter your new password below.</p>
+      
+      <div class="input-group">
+        <i class="ph ph-lock-key"></i>
+        <input type="password" id="new-password" placeholder="New Password" required>
+      </div>
+      
+      <div id="update-error" class="error-msg hidden"></div>
+      
+      <button type="button" id="update-password-btn" class="btn primary-btn">Update Password</button>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION VIEW -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <div id="app-view" class="view-section hidden layout-wrapper">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar glass-card">
+      <div class="sidebar-brand">
+        <i class="ph ph-check-circle pd-icon"></i>
+        <h2>AttendPro</h2>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-target="dashboard">
+          <i class="ph ph-squares-four"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-target="calendar">
+          <i class="ph ph-calendar-blank"></i>
+          <span>Calendar</span>
+        </button>
+        <button class="nav-item" data-target="stats">
+          <i class="ph ph-chart-line-up"></i>
+          <span>Statistics</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button id="theme-toggle" class="nav-item">
+          <i class="ph ph-moon"></i>
+          <span>Dark Mode</span>
+        </button>
+        <button id="logout-btn" class="nav-item danger">
+          <i class="ph ph-sign-out"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <header class="topbar">
+        <div class="topbar-left" style="display: flex; align-items: center; gap: 15px;">
+          <button id="mobile-toggle" class="icon-btn mobile-only"><i class="ph ph-list"></i></button>
+          <h1 id="page-title">Dashboard</h1>
+        </div>
+        <div class="user-profile">
+          <div class="avatar"><i class="ph ph-user"></i></div>
+          <span id="user-greeting" class="desktop-only">Loading...</span>
+        </div>
+      </header>
+
+      <!-- Dashboard Tab -->
+      <section id="dashboard" class="tab-content active">
+        <div class="dashboard-grid">
+          
+          <!-- Quick Stats -->
+          <div class="stats-row">
+            <div class="stat-card glass-card">
+              <div class="stat-icon"><i class="ph ph-briefcase"></i></div>
+              <div class="stat-info">
+                <span class="stat-value" id="dash-totaldays">0</span>
+                <span class="stat-label">Total Working Days</span>
+              </div>
+            </div>
+            <div class="stat-card glass-card">
+              <div class="stat-icon green"><i class="ph ph-check"></i></div>
+              <div class="stat-info">
+                <span class="stat-value" id="dash-present">0</span>
+                <span class="stat-label">Days Present</span>
+              </div>
+            </div>
+            <div class="stat-card glass-card">
+              <div class="stat-icon red"><i class="ph ph-x"></i></div>
+              <div class="stat-info">
+                <span class="stat-value" id="dash-absent">0</span>
+                <span class="stat-label">Days Absent</span>
+              </div>
+            </div>
+            <div class="stat-card glass-card">
+              <div class="stat-icon blue"><i class="ph ph-confetti"></i></div>
+              <div class="stat-info">
+                <span class="stat-value" id="dash-holidays">0</span>
+                <span class="stat-label">Holidays</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Overview Card -->
+          <div class="main-overview-card glass-card">
+            <div class="overview-left">
+              <h3>Overall Attendance</h3>
+              <p>Your cumulative performance</p>
+              <div id="attendance-badge" class="status-badge safe">Safe (>=75%)</div>
+            </div>
+            <div class="overview-right">
+              <!-- Animated Circular Progress -->
+              <div class="progress-ring-container">
+                <svg width="160" height="160" class="progress-ring">
+                  <circle class="progress-ring-track" cx="80" cy="80" r="70" />
+                  <circle class="progress-ring-fill" id="circular-progress" cx="80" cy="80" r="70" />
+                </svg>
+                <div class="progress-value" id="progress-text">0%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Smart Predictor Card -->
+          <div class="smart-predictor-card glass-card">
+            <h3><i class="ph ph-magic-wand"></i> Smart Leave Predictor</h3>
+            <div id="predictor-content" class="predictor-content">
+              <!-- Content populated via JS -->
+              <div class="predictor-placeholder">Log attendance to see predictions.</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Calendar Tab -->
+      <section id="calendar" class="tab-content hidden">
+        <div class="calendar-wrapper glass-card">
+          <div class="calendar-header">
+            <button id="prev-month" class="icon-btn"><i class="ph ph-caret-left"></i></button>
+            <h2 id="calendar-month-year">Month Year</h2>
+            <button id="next-month" class="icon-btn"><i class="ph ph-caret-right"></i></button>
+          </div>
+          
+          <div class="calendar-grid">
+            <!-- Weekday headers -->
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+            
+            <!-- Days populated by JS -->
+            <div id="calendar-days" class="calendar-days"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Statistics Tab -->
+      <section id="stats" class="tab-content hidden">
+        <div class="stats-wrapper">
+          <div class="chart-container glass-card">
+            <h3>Monthly Performance</h3>
+            <canvas id="attendanceChart"></canvas>
+          </div>
+          
+          <div class="monthly-breakdown">
+            <h3>Month by Month breakdown</h3>
+            <div id="month-cards-container" class="month-cards-grid">
+              <!-- Cards populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- Status Selection Modal -->
+  <div id="status-modal" class="modal hidden">
+    <div class="modal-content glass-card">
+      <h3 id="modal-date-text">Select Status for Date</h3>
+      <div class="status-options">
+        <button class="status-btn present" data-status="present">
+          <i class="ph ph-check-circle"></i> Present
+        </button>
+        <button class="status-btn absent" data-status="absent">
+          <i class="ph ph-x-circle"></i> Absent
+        </button>
+        <button class="status-btn holiday" data-status="holiday">
+          <i class="ph ph-confetti"></i> Holiday
+        </button>
+        <button class="status-btn medical" data-status="medical">
+          <i class="ph ph-first-aid"></i> Medical Leave
+        </button>
+        <button class="status-btn clear" data-status="clear">
+          <i class="ph ph-trash"></i> Clear Entry
+        </button>
+      </div>
+      <button id="close-modal" class="btn secondary-btn" style="margin-top: 20px; width: 100%;">Cancel</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
