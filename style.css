@@ -61,8 +61,8 @@ body:not([data-theme="dark"]) {
 
 .hidden { display: none !important; }
 
-.mobile-only { display: none; }
-.desktop-only { display: inline-block; }
+.mobile-only { display: none !important; }
+.desktop-only { display: inline-block !important; }
 
 .sidebar-overlay {
   display: none;
@@ -681,8 +681,8 @@ body:not([data-theme="dark"]) {
 
 /* Responsiveness */
 @media (max-width: 768px) {
-  .desktop-only { display: none; }
-  .mobile-only { display: flex; }
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
   
   .layout-wrapper {
     grid-template-columns: 1fr;

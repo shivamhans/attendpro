@@ -63,6 +63,7 @@ const dashTotal = document.getElementById('dash-totaldays');
 const dashPresent = document.getElementById('dash-present');
 const dashAbsent = document.getElementById('dash-absent');
 const dashHolidays = document.getElementById('dash-holidays');
+const dashMedicals = document.getElementById('dash-medicals');
 const circularProgress = document.getElementById('circular-progress');
 const progressText = document.getElementById('progress-text');
 const attendanceBadge = document.getElementById('attendance-badge');
@@ -418,12 +419,13 @@ function updateDashboardStats() {
   const absents = attendanceData.filter(d => d.status === 'absent').length;
   const holidays = attendanceData.filter(d => d.status === 'holiday').length;
   const medicals = attendanceData.filter(d => d.status === 'medical').length;
-  const workingDays = presents + absents + medicals;
+  const workingDays = presents + absents; // Treat medicals as holidays
 
   dashTotal.textContent = workingDays;
   dashPresent.textContent = presents;
   dashAbsent.textContent = absents;
   dashHolidays.textContent = holidays;
+  if (dashMedicals) dashMedicals.textContent = medicals;
 
   const percentage = workingDays === 0 ? 0 : Math.round((presents / workingDays) * 100);
 
@@ -583,7 +585,7 @@ function renderStats() {
 
   attendanceData.forEach(record => {
     // record.date is "YYYY-MM-DD"
-    if (record.status === 'holiday') return; // Do not count holidays
+    if (record.status === 'holiday' || record.status === 'medical') return; // Do not count holidays or medical leaves
 
     const monthKey = record.date.substring(0, 7);
 
