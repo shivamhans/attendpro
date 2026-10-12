@@ -1,295 +1,808 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Attendance Tracker</title>
-  
-  <!-- Fonts -->
+  <meta name="description" content="AttendPro — Smart Attendance Tracker. Track your daily attendance, get predictions, and never miss the 75% target.">
+  <title>AttendPro — Smart Attendance Tracker</title>
+
+  <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Icons -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <!-- Supabase -->
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1" defer></script>
+
+  <!-- Chart.js — NOT deferred so Chart global is available when script.js runs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Supabase — NOT deferred so window.supabase is available at module parse time -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
+
   <!-- Styles -->
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="import.css">
 </head>
 <body>
 
-  <!-- AUTHENTICATION VIEW -->
-  <div id="auth-view" class="view-section active">
-    <div class="auth-container glass-card">
-      <div class="auth-logo">
-        <i class="ph ph-check-circle pd-icon"></i>
-        <h1>AttendPro</h1>
+  <!-- ============================================================
+       TOAST CONTAINER
+       ============================================================ -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- ============================================================
+       VIEW: AUTHENTICATION
+       ============================================================ -->
+  <div id="auth-view" class="view-section" role="main">
+    <div class="auth-container glass-card" role="region" aria-label="Login form">
+      <div class="auth-logo" aria-hidden="true">
+        <i class="ph ph-check-circle"></i>
+        <span>AttendPro</span>
       </div>
-      <p class="auth-subtitle">Welcome back. Please login to continue.</p>
-      
-      <form id="auth-form">
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-subtitle">Sign in to track your attendance.</p>
+
+      <form id="auth-form" novalidate>
         <div class="input-group">
-          <i class="ph ph-envelope"></i>
-          <input type="email" id="auth-email" placeholder="Email Address" required>
+          <label for="auth-email" class="sr-only">Email address</label>
+          <i class="ph ph-envelope" aria-hidden="true"></i>
+          <input
+            type="email"
+            id="auth-email"
+            placeholder="Email address"
+            autocomplete="email"
+            required
+            aria-required="true"
+            aria-describedby="auth-error"
+          >
         </div>
         <div class="input-group">
-          <i class="ph ph-lock-key"></i>
-          <input type="password" id="auth-password" placeholder="Password" required>
+          <label for="auth-password" class="sr-only">Password</label>
+          <i class="ph ph-lock-key" aria-hidden="true"></i>
+          <input
+            type="password"
+            id="auth-password"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+            aria-required="true"
+          >
+          <button
+            type="button"
+            class="password-toggle"
+            id="toggle-auth-password"
+            aria-label="Toggle password visibility"
+          >
+            <i class="ph ph-eye" aria-hidden="true"></i>
+          </button>
         </div>
-        
-        <div id="auth-error" class="error-msg hidden"></div>
-        
-        <button type="submit" id="login-btn" class="btn primary-btn">Login</button>
-        <button type="button" id="signup-btn" class="btn secondary-btn">Create Account</button>
-        <button type="button" id="forgot-password-btn" class="btn secondary-btn" style="border: none; margin-top: -5px; font-size: 0.9rem;">Forgot Password?</button>
-        
-        <div class="watermark">Made by Shivam Hans</div>
+
+        <div id="auth-error" class="field-error hidden" role="alert" aria-live="assertive"></div>
+
+        <button type="submit" id="login-btn" class="btn primary-btn" aria-describedby="auth-error">
+          <span class="btn-label">Sign In</span>
+          <span class="btn-spinner hidden" aria-hidden="true"><i class="ph ph-spinner"></i></span>
+        </button>
+        <button type="button" id="signup-btn" class="btn secondary-btn">
+          <span class="btn-label">Create Account</span>
+          <span class="btn-spinner hidden" aria-hidden="true"><i class="ph ph-spinner"></i></span>
+        </button>
+        <button type="button" id="forgot-password-btn" class="btn ghost-btn">Forgot password?</button>
       </form>
+
+      <p class="watermark">Made by Shivam Hans</p>
     </div>
   </div>
 
-  <!-- PASSWORD RECOVERY VIEWS -->
-  <div id="reset-password-view" class="view-section hidden">
-    <div class="auth-container glass-card">
-      <div class="auth-logo">
+  <!-- ============================================================
+       VIEW: RESET PASSWORD (request link)
+       ============================================================ -->
+  <div id="reset-password-view" class="view-section hidden" role="main">
+    <div class="auth-container glass-card" role="region" aria-label="Password reset form">
+      <div class="auth-logo" aria-hidden="true">
         <i class="ph ph-key"></i>
-        <h1>Reset Password</h1>
+        <span>Reset Password</span>
       </div>
-      <p class="auth-subtitle">Enter your email to receive a recovery link.</p>
-      
+      <h1 class="auth-title">Forgot your password?</h1>
+      <p class="auth-subtitle">Enter your email and we'll send you a recovery link.</p>
+
       <div class="input-group">
-        <i class="ph ph-envelope"></i>
-        <input type="email" id="reset-email" placeholder="Email Address" required>
+        <label for="reset-email" class="sr-only">Email address</label>
+        <i class="ph ph-envelope" aria-hidden="true"></i>
+        <input
+          type="email"
+          id="reset-email"
+          placeholder="Email address"
+          autocomplete="email"
+          required
+          aria-required="true"
+        >
       </div>
-      
-      <div id="reset-error" class="error-msg hidden"></div>
-      
-      <button type="button" id="send-reset-btn" class="btn primary-btn">Send Link</button>
-      <button type="button" id="back-to-login-btn" class="btn secondary-btn">Back to Login</button>
+
+      <div id="reset-error" class="field-error hidden" role="alert" aria-live="assertive"></div>
+
+      <button type="button" id="send-reset-btn" class="btn primary-btn">
+        <span class="btn-label">Send Recovery Link</span>
+        <span class="btn-spinner hidden" aria-hidden="true"><i class="ph ph-spinner"></i></span>
+      </button>
+      <button type="button" id="back-to-login-btn" class="btn secondary-btn">Back to Sign In</button>
     </div>
   </div>
 
-  <div id="update-password-view" class="view-section hidden">
-    <div class="auth-container glass-card">
-      <div class="auth-logo">
+  <!-- ============================================================
+       VIEW: UPDATE PASSWORD (after clicking email link)
+       ============================================================ -->
+  <div id="update-password-view" class="view-section hidden" role="main">
+    <div class="auth-container glass-card" role="region" aria-label="Update password form">
+      <div class="auth-logo" aria-hidden="true">
         <i class="ph ph-lock-key"></i>
-        <h1>New Password</h1>
+        <span>New Password</span>
       </div>
-      <p class="auth-subtitle">Please enter your new password below.</p>
-      
+      <h1 class="auth-title">Set a new password</h1>
+      <p class="auth-subtitle">Choose a strong password for your account.</p>
+
       <div class="input-group">
-        <i class="ph ph-lock-key"></i>
-        <input type="password" id="new-password" placeholder="New Password" required>
+        <label for="new-password" class="sr-only">New password</label>
+        <i class="ph ph-lock-key" aria-hidden="true"></i>
+        <input
+          type="password"
+          id="new-password"
+          placeholder="New password (min. 6 characters)"
+          autocomplete="new-password"
+          required
+          aria-required="true"
+          aria-describedby="update-error"
+          minlength="6"
+        >
+        <button
+          type="button"
+          class="password-toggle"
+          id="toggle-new-password"
+          aria-label="Toggle password visibility"
+        >
+          <i class="ph ph-eye" aria-hidden="true"></i>
+        </button>
       </div>
-      
-      <div id="update-error" class="error-msg hidden"></div>
-      
-      <button type="button" id="update-password-btn" class="btn primary-btn">Update Password</button>
+
+      <div id="update-error" class="field-error hidden" role="alert" aria-live="assertive"></div>
+
+      <button type="button" id="update-password-btn" class="btn primary-btn">
+        <span class="btn-label">Update Password</span>
+        <span class="btn-spinner hidden" aria-hidden="true"><i class="ph ph-spinner"></i></span>
+      </button>
     </div>
   </div>
 
-  <!-- MAIN APPLICATION VIEW -->
-  <div id="sidebar-overlay" class="sidebar-overlay"></div>
-  <div id="app-view" class="view-section hidden layout-wrapper">
-    
-    <!-- Sidebar -->
-    <aside class="sidebar glass-card">
-      <div class="sidebar-brand">
-        <i class="ph ph-check-circle pd-icon"></i>
-        <h2>AttendPro</h2>
+  <!-- ============================================================
+       VIEW: MAIN APPLICATION
+       ============================================================ -->
+  <div id="app-view" class="view-section hidden app-shell">
+
+    <!-- ── TOP HEADER ─────────────────────────────────────────── -->
+    <header class="app-header" role="banner">
+      <div class="app-header-brand" aria-label="AttendPro">
+        <i class="ph ph-check-circle" aria-hidden="true"></i>
+        <span>AttendPro</span>
       </div>
-      
-      <nav class="sidebar-nav">
-        <button class="nav-item active" data-target="dashboard">
-          <i class="ph ph-squares-four"></i>
-          <span>Dashboard</span>
+
+      <div class="app-header-right">
+        <!-- Page title (updated by JS) -->
+        <h2 id="page-title" class="app-header-page-title sr-only-mobile">Dashboard</h2>
+
+        <!-- Theme toggle -->
+        <button id="theme-toggle" class="header-icon-btn" aria-label="Toggle dark mode">
+          <i class="ph ph-moon" aria-hidden="true"></i>
         </button>
-        <button class="nav-item" data-target="calendar">
-          <i class="ph ph-calendar-blank"></i>
-          <span>Calendar</span>
-        </button>
-        <button class="nav-item" data-target="stats">
-          <i class="ph ph-chart-line-up"></i>
-          <span>Statistics</span>
-        </button>
-      </nav>
-      
-      <div class="sidebar-footer">
-        <button id="theme-toggle" class="nav-item">
-          <i class="ph ph-moon"></i>
-          <span>Dark Mode</span>
-        </button>
-        <button id="logout-btn" class="nav-item danger">
-          <i class="ph ph-sign-out"></i>
-          <span>Logout</span>
+
+        <!-- User profile -->
+        <div class="user-profile" aria-label="User info">
+          <div class="avatar" aria-hidden="true">
+            <i class="ph ph-user"></i>
+          </div>
+          <span id="user-greeting" aria-live="polite" class="user-greeting-text">Loading…</span>
+        </div>
+
+        <!-- Logout -->
+        <button id="logout-btn" class="header-icon-btn header-logout-btn" aria-label="Log out">
+          <i class="ph ph-sign-out" aria-hidden="true"></i>
         </button>
       </div>
-    </aside>
+    </header>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-      
-      <header class="topbar">
-        <div class="topbar-left" style="display: flex; align-items: center; gap: 15px;">
-          <button id="mobile-toggle" class="icon-btn mobile-only"><i class="ph ph-list"></i></button>
-          <h1 id="page-title">Dashboard</h1>
-        </div>
-        <div class="user-profile">
-          <div class="avatar"><i class="ph ph-user"></i></div>
-          <span id="user-greeting" class="desktop-only">Loading...</span>
-        </div>
-      </header>
+    <!-- ── MAIN CONTENT ───────────────────────────────────────── -->
+    <main class="main-content" id="main-content" aria-label="Main content">
 
-      <!-- Dashboard Tab -->
-      <section id="dashboard" class="tab-content active">
-        <div class="dashboard-grid">
-          
-          <!-- Quick Stats -->
-          <div class="stats-row">
-            <div class="stat-card glass-card">
-              <div class="stat-icon"><i class="ph ph-briefcase"></i></div>
+      <!-- ======================================================
+           SECTION: DASHBOARD
+           ====================================================== -->
+      <section id="dashboard" class="tab-content" aria-labelledby="dashboard-heading">
+        <h2 id="dashboard-heading" class="sr-only">Dashboard</h2>
+
+        <!-- Empty-state: shown when user has zero records -->
+        <div id="dashboard-empty" class="hidden" aria-live="polite"></div>
+
+        <!-- Loading skeleton -->
+        <div id="dashboard-loading" class="loading-state" aria-live="polite">
+          <div class="skeleton-grid">
+            <div class="skeleton skeleton-stat"></div>
+            <div class="skeleton skeleton-stat"></div>
+            <div class="skeleton skeleton-stat"></div>
+            <div class="skeleton skeleton-stat"></div>
+            <div class="skeleton skeleton-stat"></div>
+            <div class="skeleton skeleton-stat"></div>
+          </div>
+          <div class="skeleton skeleton-overview"></div>
+          <div class="skeleton skeleton-predictor"></div>
+        </div>
+
+        <!-- Dashboard content (hidden until data loads) -->
+        <div id="dashboard-content" class="dashboard-grid hidden">
+
+          <!-- Quick Stats Row -->
+          <div class="stats-row" role="list" aria-label="Attendance statistics">
+            <article class="stat-card glass-card" role="listitem" aria-label="Total working days">
+              <div class="stat-icon" aria-hidden="true">
+                <i class="ph ph-briefcase"></i>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="dash-totaldays">0</span>
-                <span class="stat-label">Total Working Days</span>
+                <span class="stat-label">Working Days</span>
               </div>
-            </div>
-            <div class="stat-card glass-card">
-              <div class="stat-icon green"><i class="ph ph-check"></i></div>
+            </article>
+
+            <article class="stat-card glass-card" role="listitem" aria-label="Days present">
+              <div class="stat-icon green" aria-hidden="true">
+                <i class="ph ph-check-circle"></i>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="dash-present">0</span>
-                <span class="stat-label">Days Present</span>
+                <span class="stat-label">Present</span>
               </div>
-            </div>
-            <div class="stat-card glass-card">
-              <div class="stat-icon red"><i class="ph ph-x"></i></div>
+            </article>
+
+            <article class="stat-card glass-card" role="listitem" aria-label="Half day records">
+              <div class="stat-icon orange" aria-hidden="true">
+                <i class="ph ph-circle-half"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="dash-halfdays">0</span>
+                <span class="stat-label">Half-Day Records</span>
+              </div>
+            </article>
+
+            <article class="stat-card glass-card" role="listitem" aria-label="Days absent">
+              <div class="stat-icon red" aria-hidden="true">
+                <i class="ph ph-x-circle"></i>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="dash-absent">0</span>
-                <span class="stat-label">Days Absent</span>
+                <span class="stat-label">Absent</span>
               </div>
-            </div>
-            <div class="stat-card glass-card">
-              <div class="stat-icon blue"><i class="ph ph-confetti"></i></div>
+            </article>
+
+            <article class="stat-card glass-card" role="listitem" aria-label="Holidays">
+              <div class="stat-icon amber" aria-hidden="true">
+                <i class="ph ph-sun-horizon"></i>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="dash-holidays">0</span>
                 <span class="stat-label">Holidays</span>
               </div>
-            </div>
-            <div class="stat-card glass-card">
-              <div class="stat-icon purple"><i class="ph ph-first-aid"></i></div>
+            </article>
+
+            <article class="stat-card glass-card" role="listitem" aria-label="Medical leave days">
+              <div class="stat-icon purple" aria-hidden="true">
+                <i class="ph ph-first-aid"></i>
+              </div>
               <div class="stat-info">
                 <span class="stat-value" id="dash-medicals">0</span>
-                <span class="stat-label">Medical Leaves</span>
+                <span class="stat-label">Medical Leave</span>
               </div>
-            </div>
+            </article>
           </div>
 
-          <!-- Main Overview Card -->
-          <div class="main-overview-card glass-card">
+          <!-- Attendance Overview Card -->
+          <article class="overview-card glass-card" aria-label="Overall attendance overview">
             <div class="overview-left">
-              <h3>Overall Attendance</h3>
-              <p>Your cumulative performance</p>
-              <div id="attendance-badge" class="status-badge safe">Safe (>=75%)</div>
+              <h3 class="overview-title">Official Attendance</h3>
+              <p class="overview-subtitle">School-counted attendance — Medical Leave credited as Present</p>
+              <div id="attendance-badge" class="status-badge" aria-live="polite"></div>
+              <!-- Actual attendance sub-line, populated by JS -->
+              <p id="dash-actual-pct" class="overview-actual hidden" aria-live="polite"></p>
+              <!-- Info tooltip trigger -->
+              <button
+                class="info-pill"
+                id="dash-info-btn"
+                aria-expanded="false"
+                aria-controls="dash-info-panel"
+                aria-label="How attendance is calculated"
+              >
+                <i class="ph ph-info" aria-hidden="true"></i>
+                How is this calculated?
+              </button>
             </div>
-            <div class="overview-right">
-              <!-- Animated Circular Progress -->
-              <div class="progress-ring-container">
-                <svg width="160" height="160" class="progress-ring">
+            <div class="overview-right" aria-label="Circular attendance progress">
+              <div class="progress-ring-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-ring-aria">
+                <svg width="160" height="160" class="progress-ring" viewBox="0 0 160 160" aria-hidden="true">
                   <circle class="progress-ring-track" cx="80" cy="80" r="70" />
                   <circle class="progress-ring-fill" id="circular-progress" cx="80" cy="80" r="70" />
                 </svg>
-                <div class="progress-value" id="progress-text">0%</div>
+                <div class="progress-value" id="progress-text" aria-hidden="true">0%</div>
               </div>
             </div>
+          </article>
+
+          <!-- Info panel — hidden by default, toggled by the button above -->
+          <div id="dash-info-panel" class="info-panel glass-card hidden" role="region" aria-label="Attendance calculation explained">
+            <div class="info-panel-header">
+              <i class="ph ph-graduation-cap" aria-hidden="true"></i>
+              <strong>How attendance is calculated</strong>
+            </div>
+            <ul class="info-panel-list">
+              <li>
+                <span class="info-dot present"></span>
+                <strong>Full Day Present</strong> — 1.0 working day, 1.0 attended.
+              </li>
+              <li>
+                <span class="info-dot present"></span>
+                <strong>Half Day Present</strong> — 0.5 working day, 0.5 attended.
+              </li>
+              <li>
+                <span class="info-dot medical"></span>
+                <strong>Medical Leave (Full/Half)</strong> — credited as Present by school's policy.
+                Counts toward Official % but shown separately. Actual % excludes it.
+              </li>
+              <li>
+                <span class="info-dot absent"></span>
+                <strong>Absent (Full/Half)</strong> — counts as working day, 0 attended.
+              </li>
+              <li>
+                <span class="info-dot holiday"></span>
+                <strong>Holiday</strong> — completely excluded from working days and attendance %.
+              </li>
+              <li>
+                <span class="info-dot off"></span>
+                <strong>Sunday / 2nd Saturday</strong> — automatic non-working days. Excluded from all calculations.
+              </li>
+            </ul>
+            <div class="info-panel-formula">
+              <div class="formula-row">
+                <span class="formula-label">Official %</span>
+                <span class="formula-expr">(Present×dur + Medical×dur) ÷ Working Days × 100</span>
+              </div>
+              <div class="formula-row">
+                <span class="formula-label">Actual %</span>
+                <span class="formula-expr">(Present×dur) ÷ Working Days × 100</span>
+              </div>
+              <div class="formula-row">
+                <span class="formula-label">Working Days</span>
+                <span class="formula-expr">Σ dur for all non-holiday records (full=1, half=0.5)</span>
+              </div>
+            </div>
+            <p class="info-panel-note">
+              The school's 75% requirement uses <strong>Official Attendance</strong>.
+              That is what the progress ring and Smart Leave Predictor display.
+            </p>
           </div>
 
           <!-- Smart Predictor Card -->
-          <div class="smart-predictor-card glass-card">
-            <h3><i class="ph ph-magic-wand"></i> Smart Leave Predictor</h3>
-            <div id="predictor-content" class="predictor-content">
-              <!-- Content populated via JS -->
-              <div class="predictor-placeholder">Log attendance to see predictions.</div>
+          <article class="predictor-card glass-card" aria-label="Smart leave predictor">
+            <h3 class="predictor-title">
+              <i class="ph ph-magic-wand" aria-hidden="true"></i>
+              Smart Leave Predictor
+            </h3>
+            <div id="predictor-content" class="predictor-body" aria-live="polite">
+              <p class="placeholder-text">Log some attendance days to see your predictions.</p>
             </div>
-          </div>
+          </article>
 
+        </div>
+
+        <!-- Error state -->
+        <div id="dashboard-error" class="error-state hidden" role="alert">
+          <i class="ph ph-wifi-slash" aria-hidden="true"></i>
+          <p>Unable to load attendance data. Please try again.</p>
+          <button id="retry-dashboard" class="btn secondary-btn">Retry</button>
         </div>
       </section>
 
-      <!-- Calendar Tab -->
-      <section id="calendar" class="tab-content hidden">
+      <!-- ======================================================
+           SECTION: CALENDAR
+           ====================================================== -->
+      <section id="calendar" class="tab-content hidden" aria-labelledby="calendar-heading">
+        <h2 id="calendar-heading" class="sr-only">Calendar</h2>
+
         <div class="calendar-wrapper glass-card">
           <div class="calendar-header">
-            <button id="prev-month" class="icon-btn"><i class="ph ph-caret-left"></i></button>
-            <h2 id="calendar-month-year">Month Year</h2>
-            <button id="next-month" class="icon-btn"><i class="ph ph-caret-right"></i></button>
+            <button id="prev-month" class="icon-btn" aria-label="Previous month">
+              <i class="ph ph-caret-left" aria-hidden="true"></i>
+            </button>
+            <h3 id="calendar-month-year" aria-live="polite" aria-atomic="true">Month Year</h3>
+            <button id="next-month" class="icon-btn" aria-label="Next month">
+              <i class="ph ph-caret-right" aria-hidden="true"></i>
+            </button>
           </div>
-          
-          <div class="calendar-grid">
+
+          <!-- Legend -->
+          <div class="calendar-legend" aria-label="Calendar status legend">
+            <span class="legend-item"><span class="legend-dot present" aria-hidden="true"></span>Present</span>
+            <span class="legend-item"><span class="legend-dot half-day" aria-hidden="true"></span>Half Day</span>
+            <span class="legend-item"><span class="legend-dot absent" aria-hidden="true"></span>Absent</span>
+            <span class="legend-item"><span class="legend-dot medical" aria-hidden="true"></span>Medical</span>
+            <span class="legend-item"><span class="legend-dot holiday" aria-hidden="true"></span>Holiday</span>
+            <span class="legend-item"><span class="legend-dot off" aria-hidden="true"></span>Non-working</span>
+          </div>
+
+          <!-- Calendar grid -->
+          <div class="calendar-grid" role="grid" aria-label="Attendance calendar">
             <!-- Weekday headers -->
-            <div class="weekday">Sun</div>
-            <div class="weekday">Mon</div>
-            <div class="weekday">Tue</div>
-            <div class="weekday">Wed</div>
-            <div class="weekday">Thu</div>
-            <div class="weekday">Fri</div>
-            <div class="weekday">Sat</div>
-            
+            <div class="weekday" role="columnheader" aria-label="Sunday">Sun</div>
+            <div class="weekday" role="columnheader" aria-label="Monday">Mon</div>
+            <div class="weekday" role="columnheader" aria-label="Tuesday">Tue</div>
+            <div class="weekday" role="columnheader" aria-label="Wednesday">Wed</div>
+            <div class="weekday" role="columnheader" aria-label="Thursday">Thu</div>
+            <div class="weekday" role="columnheader" aria-label="Friday">Fri</div>
+            <div class="weekday" role="columnheader" aria-label="Saturday">Sat</div>
+
             <!-- Days populated by JS -->
-            <div id="calendar-days" class="calendar-days"></div>
+            <div id="calendar-days" class="calendar-days" role="rowgroup"></div>
           </div>
         </div>
       </section>
 
-      <!-- Statistics Tab -->
-      <section id="stats" class="tab-content hidden">
+      <!-- ======================================================
+           SECTION: STATISTICS
+           ====================================================== -->
+      <section id="stats" class="tab-content hidden" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" class="sr-only">Statistics</h2>
+
         <div class="stats-wrapper">
-          <div class="chart-container glass-card">
-            <h3>Monthly Performance</h3>
-            <canvas id="attendanceChart"></canvas>
-          </div>
-          
-          <div class="monthly-breakdown">
-            <h3>Month by Month breakdown</h3>
-            <div id="month-cards-container" class="month-cards-grid">
-              <!-- Cards populated by JS -->
+          <!-- Chart card -->
+          <div class="chart-container glass-card" aria-label="Monthly attendance chart">
+            <div class="chart-header">
+              <div class="chart-header-top">
+                <div>
+                  <h3>Monthly Performance</h3>
+                  <p class="chart-subtitle" id="chart-mode-label">Medical Leave counted as Present</p>
+                </div>
+                <!-- Chart view toggle -->
+                <div
+                  class="chart-toggle-group"
+                  id="chart-toggle-group"
+                  role="group"
+                  aria-label="Chart view mode"
+                >
+                  <button
+                    class="chart-toggle-btn chart-toggle-active"
+                    data-mode="official"
+                    aria-pressed="true"
+                    aria-label="Show official attendance"
+                  >
+                    Official
+                  </button>
+                  <button
+                    class="chart-toggle-btn"
+                    data-mode="actual"
+                    aria-pressed="false"
+                    aria-label="Show actual attendance"
+                  >
+                    Actual
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div id="chart-loading" class="chart-loading-state hidden" aria-hidden="true">
+              <div class="skeleton skeleton-chart"></div>
+            </div>
+            <div class="chart-canvas-wrapper" aria-label="Line chart showing monthly attendance percentage">
+              <canvas id="attendanceChart" aria-label="Attendance chart" role="img"></canvas>
+            </div>
+            <div id="chart-empty" class="chart-empty hidden" aria-live="polite">
+              <i class="ph ph-chart-line" aria-hidden="true"></i>
+              <p>No attendance data yet. Start logging days to see your performance.</p>
             </div>
           </div>
+
+          <!-- Month-by-month breakdown -->
+          <div class="monthly-breakdown">
+            <h3 class="breakdown-title">Month by Month</h3>
+            <div id="month-cards-container" class="month-cards-grid" aria-live="polite" aria-label="Monthly attendance breakdown">
+              <p class="placeholder-text">No data yet.</p>
+            </div>
+          </div>
+
+          <!-- Data Management -->
+          <div class="data-management-section" aria-label="Data management">
+            <p class="dm-title">Data Management</p>
+
+            <div class="dm-row">
+              <div class="dm-item-info">
+                <p class="dm-item-label">Import Previous Attendance</p>
+                <p class="dm-item-desc">Already have school records? Set up your historical attendance.</p>
+              </div>
+              <button
+                class="dm-import-btn"
+                data-action="open-wizard"
+                aria-label="Import historical attendance"
+              >
+                <i class="ph ph-upload-simple" aria-hidden="true"></i>
+                Import
+              </button>
+            </div>
+
+            <hr class="dm-divider">
+
+            <div class="dm-row">
+              <div class="dm-item-info">
+                <p class="dm-item-label">Reset Attendance</p>
+                <p class="dm-item-desc">Delete all attendance records and start over. Your account is not affected.</p>
+              </div>
+              <button
+                class="dm-btn"
+                data-action="open-reset"
+                aria-label="Reset all attendance data"
+              >
+                <i class="ph ph-trash" aria-hidden="true"></i>
+                Reset
+              </button>
+            </div>
+          </div>
+
         </div>
       </section>
-      
-    </main>
-  </div>
 
-  <!-- Status Selection Modal -->
-  <div id="status-modal" class="modal hidden">
+    </main>
+  </div><!-- /#app-view -->
+
+  <!-- ============================================================
+       FLOATING BOTTOM DOCK — Navigation
+       ============================================================ -->
+  <nav
+    id="bottom-dock"
+    class="bottom-dock hidden"
+    role="navigation"
+    aria-label="Main navigation"
+  >
+    <!-- Animated active-item bubble (repositioned by JS) -->
+    <div id="dock-bubble" class="dock-bubble" aria-hidden="true"></div>
+
+    <button
+      class="dock-item nav-item active"
+      data-target="dashboard"
+      aria-current="page"
+      aria-label="Dashboard"
+    >
+      <i class="ph ph-squares-four dock-icon" aria-hidden="true"></i>
+      <span class="dock-label">Dashboard</span>
+    </button>
+
+    <button
+      class="dock-item nav-item"
+      data-target="calendar"
+      aria-label="Calendar"
+    >
+      <i class="ph ph-calendar-blank dock-icon" aria-hidden="true"></i>
+      <span class="dock-label">Calendar</span>
+    </button>
+
+    <button
+      class="dock-item nav-item"
+      data-target="stats"
+      aria-label="Statistics"
+    >
+      <i class="ph ph-chart-line-up dock-icon" aria-hidden="true"></i>
+      <span class="dock-label">Statistics</span>
+    </button>
+  </nav>
+
+  <!-- ============================================================
+       MODAL: STATUS SELECTION (mark / change attendance)
+       ============================================================ -->
+  <div
+    id="status-modal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+    aria-describedby="modal-date-text"
+  >
+    <div class="modal-backdrop" id="modal-backdrop"></div>
     <div class="modal-content glass-card">
-      <h3 id="modal-date-text">Select Status for Date</h3>
-      <div class="status-options">
-        <button class="status-btn present" data-status="present">
-          <i class="ph ph-check-circle"></i> Present
-        </button>
-        <button class="status-btn absent" data-status="absent">
-          <i class="ph ph-x-circle"></i> Absent
-        </button>
-        <button class="status-btn holiday" data-status="holiday">
-          <i class="ph ph-confetti"></i> Holiday
-        </button>
-        <button class="status-btn medical" data-status="medical">
-          <i class="ph ph-first-aid"></i> Medical Leave
-        </button>
-        <button class="status-btn clear" data-status="clear">
-          <i class="ph ph-trash"></i> Clear Entry
+      <div class="modal-header">
+        <h3 id="modal-title">Log Attendance</h3>
+        <button id="close-modal" class="icon-btn" aria-label="Close modal">
+          <i class="ph ph-x" aria-hidden="true"></i>
         </button>
       </div>
-      <button id="close-modal" class="btn secondary-btn" style="margin-top: 20px; width: 100%;">Cancel</button>
+
+      <p id="modal-date-text" class="modal-date"></p>
+
+      <!-- Current status indicator (shown only if already marked) -->
+      <div id="modal-current-status" class="modal-current-status hidden" aria-live="polite">
+        <span class="current-label">Current:</span>
+        <span id="modal-status-value" class="current-value"></span>
+      </div>
+
+      <!-- Two-step body: rendered dynamically by renderModalBody() -->
+      <div id="modal-body" class="modal-body-container"></div>
+
+      <!-- Remove button: shown only when record exists -->
+      <button
+        id="remove-attendance-btn"
+        class="btn danger-btn modal-remove-btn hidden"
+        aria-label="Remove attendance record"
+        style="margin-top: 8px;"
+      >
+        <i class="ph ph-trash" aria-hidden="true"></i>
+        <span>Remove Attendance</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: CONFIRM DELETE
+       ============================================================ -->
+  <div
+    id="confirm-modal"
+    class="modal hidden"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="confirm-title"
+    aria-describedby="confirm-body"
+  >
+    <div class="modal-backdrop" id="confirm-backdrop"></div>
+    <div class="modal-content glass-card confirm-modal-content">
+      <div class="confirm-icon" aria-hidden="true">
+        <i class="ph ph-trash"></i>
+      </div>
+      <h3 id="confirm-title" class="confirm-title">Remove Attendance?</h3>
+      <p id="confirm-body" class="confirm-body">This will remove the attendance record and recalculate your statistics.</p>
+
+      <div class="confirm-actions">
+        <button id="confirm-cancel-btn" class="btn secondary-btn">Cancel</button>
+        <button id="confirm-delete-btn" class="btn danger-btn">
+          <span class="btn-label">Remove</span>
+          <span class="btn-spinner hidden" aria-hidden="true"><i class="ph ph-spinner"></i></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: NON-WORKING DAY INFO
+       ============================================================ -->
+  <div
+    id="non-working-modal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="non-working-title"
+    aria-describedby="non-working-body"
+    aria-hidden="true"
+  >
+    <div class="modal-backdrop" id="non-working-backdrop"></div>
+    <div class="modal-content glass-card non-working-modal-content">
+      <div class="non-working-icon" aria-hidden="true">
+        <i class="ph ph-calendar-x"></i>
+      </div>
+      <h3 id="non-working-title" class="non-working-title">Non-working Day</h3>
+      <p id="non-working-body" class="non-working-body"></p>
+      <button id="non-working-close-btn" class="btn secondary-btn" style="margin-top: 0;">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: HISTORICAL IMPORT WIZARD
+       ============================================================ -->
+  <div
+    id="import-wizard-modal"
+    class="hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="wizard-title"
+    aria-hidden="true"
+  >
+    <div class="wizard-backdrop" id="wizard-backdrop"></div>
+    <div class="wizard-panel">
+
+      <!-- Header -->
+      <div class="wizard-header">
+        <span id="wizard-title" class="wizard-title">Set Up Your Attendance</span>
+        <button id="wizard-close-btn" class="wizard-close-btn" aria-label="Close wizard">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <!-- Step indicator -->
+      <div class="wiz-stepper" role="list" aria-label="Wizard steps">
+        <div class="wiz-step-item wiz-step-active" data-step="1" role="listitem">
+          <div class="wiz-step-num" aria-hidden="true">1</div>
+          <span class="wiz-step-label">Period</span>
+        </div>
+        <div class="wiz-step-item" data-step="2" role="listitem">
+          <div class="wiz-step-num" aria-hidden="true">2</div>
+          <span class="wiz-step-label">Details</span>
+        </div>
+        <div class="wiz-step-item" data-step="3" role="listitem">
+          <div class="wiz-step-num" aria-hidden="true">3</div>
+          <span class="wiz-step-label">Review</span>
+        </div>
+        <div class="wiz-step-item" data-step="4" role="listitem">
+          <div class="wiz-step-num" aria-hidden="true">4</div>
+          <span class="wiz-step-label">Done</span>
+        </div>
+      </div>
+
+      <!-- Dynamic body — filled by import.js -->
+      <div id="wizard-body" aria-live="polite"></div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: RESET ATTENDANCE
+       ============================================================ -->
+  <div
+    id="reset-modal"
+    class="hidden"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="reset-dialog-title"
+    aria-describedby="reset-dialog-body"
+    aria-hidden="true"
+  >
+    <div class="reset-backdrop" id="reset-backdrop"></div>
+    <div class="reset-panel">
+
+      <div class="reset-icon-wrap" aria-hidden="true">
+        <i class="ph ph-warning-octagon"></i>
+      </div>
+
+      <h3 id="reset-dialog-title" class="reset-title">Reset Attendance Data?</h3>
+
+      <p id="reset-dialog-body" class="reset-body-text">
+        This will permanently remove <strong>all</strong> your attendance records,
+        including any historical imported data.
+        Your account and login will <strong>not</strong> be deleted.
+      </p>
+
+      <p class="reset-warning">This action cannot be undone.</p>
+
+      <label for="reset-confirm-input" class="reset-confirm-label">
+        Type <kbd>RESET</kbd> to confirm
+      </label>
+      <input
+        type="text"
+        id="reset-confirm-input"
+        class="reset-confirm-input"
+        placeholder="RESET"
+        autocomplete="off"
+        aria-label="Type RESET to confirm deletion"
+        spellcheck="false"
+      >
+
+      <div class="reset-actions">
+        <button id="reset-cancel-btn" class="wiz-btn-secondary">Cancel</button>
+        <button
+          id="reset-execute-btn"
+          class="reset-execute-btn"
+          disabled
+          aria-label="Permanently reset all attendance data"
+        >
+          <i class="ph ph-trash" aria-hidden="true"></i>
+          Reset All Attendance
+        </button>
+      </div>
+
     </div>
   </div>
 
   <script src="script.js"></script>
+  <script src="import.js"></script>
 </body>
 </html>
